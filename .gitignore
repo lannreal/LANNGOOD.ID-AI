@@ -1,0 +1,5 @@
+node_modules/
+.env
+riwayat.json
+*.log
+.DS_Store

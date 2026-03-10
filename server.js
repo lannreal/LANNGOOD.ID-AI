@@ -22,7 +22,7 @@ const APIKEY_GROQ = process.env.APIKEY;
 const APIKEY_TOKEN = process.env.APIKEY_TOKEN;
 const PORT = process.env.PORT || 3000;
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const LIQUID_URL = process.env.LIQUID_URL || "http://127.0.0.1:2009/v1/chat/completions";
+const LIQUID_URL = process.env.LIQUID_URL || "http://localhost:2009/v1/chat/completions";
 const LIQUID_FALLBACK_MODEL = "llama-3.3-70b-versatile"; // fallback ke Groq kalau Liquid offline
 const HISTORY_FILE = path.join(__dirname, "riwayat.json");
 const MAX_SESSIONS = 1000;
@@ -153,7 +153,9 @@ server.post("/lannreal.co", async (req, res) => {
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + (APIKEY_TOKEN || "no-key")
+        "Authorization": "Bearer " + (APIKEY_TOKEN || "no-key"),
+        "ngrok-skip-browser-warning": "true",
+        "User-Agent": "LANNGOOD-Server/4.0"
       },
       body: JSON.stringify({
         model: "liquid/lfm2.5-1.2b",

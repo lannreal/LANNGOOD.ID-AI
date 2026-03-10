@@ -22,7 +22,8 @@ const APIKEY_GROQ = process.env.APIKEY;
 const APIKEY_TOKEN = process.env.APIKEY_TOKEN;
 const PORT = process.env.PORT || 3000;
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const LIQUID_URL = "http://localhost:2009/v1/chat/completions";
+const LIQUID_URL = process.env.LIQUID_URL || "http://localhost:2009/v1/chat/completions";
+const LIQUID_FALLBACK_MODEL = "llama-3.3-70b-versatile"; // fallback ke Groq kalau Liquid offline
 const HISTORY_FILE = path.join(__dirname, "riwayat.json");
 const MAX_SESSIONS = 1000;
 
@@ -142,9 +143,14 @@ server.post("/lannreal.co", async (req, res) => {
   if (!Array.isArray(historyuser) || !historyuser.length)
     return res.status(400).json({ gagal: { message: "'cmd' harus array non-empty." } });
 
+  // ── Coba Liquid lokal dulu ──
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
     const respon = await fetch(LIQUID_URL, {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + (APIKEY_TOKEN || "no-key")
@@ -155,10 +161,41 @@ server.post("/lannreal.co", async (req, res) => {
         temperature: 0.3
       })
     });
+    clearTimeout(timeout);
     const data = await respon.json();
-    res.json(data);
-  } catch (gagal) {
-    res.status(500).json({ error: gagal.toString() });
+    // kalau ada error dari liquid server, lempar ke fallback
+    if (data.error) throw new Error(data.error);
+    return res.json(data);
+  } catch (e) {
+    // ── Fallback ke Groq kalau Liquid tidak tersedia ──
+    console.warn(`[LIQUID] Server tidak tersedia (${e.message}), fallback ke Groq...`);
+
+    if (!APIKEY_GROQ)
+      return res.status(500).json({ gagal: { message: "Liquid server offline dan APIKEY Groq tidak ditemukan." } });
+
+    try {
+      const r = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + APIKEY_GROQ },
+        body: JSON.stringify({
+          model: LIQUID_FALLBACK_MODEL,
+          messages: [{ role: "system", content: SISTEM }, ...historyuser],
+          temperature: 0.3,
+          max_tokens: 4096
+        })
+      });
+      const data = await r.json();
+      if (!data?.choices?.[0]?.message?.content)
+        return res.status(500).json({ gagal: { message: "Fallback Groq: respons kosong." } });
+
+      console.log(`[LIQUID→GROQ] Fallback berhasil via ${LIQUID_FALLBACK_MODEL}`);
+      // tandai di response supaya frontend tahu ini fallback
+      data._fallback = true;
+      data._fallback_model = LIQUID_FALLBACK_MODEL;
+      return res.json(data);
+    } catch (e2) {
+      return res.status(500).json({ gagal: { message: "Liquid offline & Groq gagal: " + e2.message } });
+    }
   }
 });
 

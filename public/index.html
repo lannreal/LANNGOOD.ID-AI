@@ -4567,6 +4567,10 @@
           appendMsg('ai', '⚠️ ERROR: ' + (data.gagal?.message || data.error), false);
           return;
         }
+        // Liquid fallback notification
+        if (data._fallback) {
+          toast('warn', 'Liquid Offline', `Server Liquid tidak tersedia, dialihkan ke ${data._fallback_model}`);
+        }
         const reply = data.choices?.[0]?.message?.content || '⚠️ Respons AI kosong.';
         appendMsg('ai', reply, true);
         riwayat.push({ role: 'assistant', content: reply });

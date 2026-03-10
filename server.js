@@ -22,7 +22,7 @@ const APIKEY_GROQ = process.env.APIKEY;
 const APIKEY_TOKEN = process.env.APIKEY_TOKEN;
 const PORT = process.env.PORT || 3000;
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const LIQUID_URL = process.env.LIQUID_URL || "https://unsoothable-unremediable-mina.ngrok-free.dev/v1/chat/completions";
+const LIQUID_URL = process.env.LIQUID_URL || "http://localhost:2009/v1/chat/completions";
 const LIQUID_FALLBACK_MODEL = "llama-3.3-70b-versatile"; // fallback ke Groq kalau Liquid offline
 const HISTORY_FILE = path.join(__dirname, "riwayat.json");
 const MAX_SESSIONS = 1000;
@@ -146,7 +146,7 @@ server.post("/lannreal.co", async (req, res) => {
   // ── Coba Liquid lokal dulu ──
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    const timeout = setTimeout(() => controller.abort(), 120000); // 120s — LM Studio butuh waktu
 
     const respon = await fetch(LIQUID_URL, {
       method: "POST",
